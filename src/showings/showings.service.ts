@@ -1,11 +1,15 @@
 import {
-  BadRequestException,
   Injectable,
+  BadRequestException,
   NotFoundException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
+
 import { FilmsService } from '../films/films.service';
 import { HallsService } from '../halls/halls.service';
+
 import { CreateShowingDto } from './dto/create-showing.dto';
 import { FindShowingsQueryDto } from './dto/find-showings-query.dto';
 import {
@@ -18,7 +22,10 @@ export class ShowingsService {
   private showings: Showing[] = [];
 
   constructor(
+    @Inject(forwardRef(() => FilmsService))
     private readonly filmsService: FilmsService,
+
+    @Inject(forwardRef(() => HallsService))
     private readonly hallsService: HallsService,
   ) {}
 
@@ -59,6 +66,7 @@ export class ShowingsService {
     };
 
     this.showings.push(showing);
+
     return showing;
   }
 
@@ -78,17 +86,12 @@ export class ShowingsService {
       );
     }
 
-    result.sort((a, b) => {
-      const timeDifference =
+    result.sort(
+      (a, b) =>
         new Date(a.startsAt).getTime() -
-        new Date(b.startsAt).getTime();
-
-      if (timeDifference !== 0) {
-        return timeDifference;
-      }
-
-      return a.id.localeCompare(b.id);
-    });
+          new Date(b.startsAt).getTime() ||
+        a.id.localeCompare(b.id),
+    );
 
     return result.map((showing) =>
       this.toDetails(showing),
@@ -126,13 +129,8 @@ export class ShowingsService {
   }
 
   private toDetails(showing: Showing): ShowingDetails {
-    const film = this.filmsService.findOne(
-      showing.filmId,
-    );
-
-    const hall = this.hallsService.findOne(
-      showing.hallId,
-    );
+    const film = this.filmsService.findOne(showing.filmId);
+    const hall = this.hallsService.findOne(showing.hallId);
 
     return {
       id: showing.id,

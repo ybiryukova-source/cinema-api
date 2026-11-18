@@ -2,14 +2,22 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { CreateHallDto } from './dto/create-hall.dto';
 import { Hall, HallWithSeats, Seat } from './entities/hall.entity';
+import { ShowingsService } from '../showings/showings.service';
 
 @Injectable()
 export class HallsService {
   private halls: Hall[] = [];
+
+  constructor(
+    @Inject(forwardRef(() => ShowingsService))
+    private readonly showingsService: ShowingsService,
+  ) {}
 
   create(dto: CreateHallDto): Hall {
     const exists = this.halls.some(
@@ -70,6 +78,12 @@ export class HallsService {
 
   remove(id: string): void {
     this.findOne(id);
+
+    if (this.showingsService.hasHall(id)) {
+      throw new ConflictException(
+        'Неможливо видалити зал, оскільки для нього існують сеанси',
+      );
+    }
 
     this.halls = this.halls.filter(
       (hall) => hall.id !== id,
